@@ -35,15 +35,19 @@ func HandleRequest(s3Event events.S3Event) error {
 	var err error
 
 	//Get Object from S3
-	S3String := "fake Data"
+	S3String := "fake data"
+
 	//Get Object to a struct
 	if request, err = unmarshalRequest(S3String); err != nil {
 		return err
 	}
-	fmt.Println(request) // temporarily print request so go will compile
-	//Send the emails
 
-	//Log errors and try to email someone on error
+	//Send the emails
+	if err = sendMail(request); err != nil {
+		return err
+	}
+
+	//Log errors and try to email someone on error. maybe use multiple error plugin thing
 
 	//Delete the object from S3
 
@@ -65,8 +69,25 @@ func sendMail(data *emailInfo) error {
 		return err
 	}
 	defer s.Close()
+	m := gomail.NewMessage()
+	for _, e := range data.Recipients {
+		m.SetAddressHeader("From", email, "Benchmark Planroom")
+		m.SetHeader("To", e.To)
+		m.SetHeader("Subject", buildSubject(data.JobName))
+		m.AddAlternative("text/plain", buildAltMessage(data.JobName, data.Expiration, data.Message, e.Link))
+		m.AddAlternative("text/html", buildMessage(data.JobName, data.Expiration, data.Message, e.Link))
+
+		if err := gomail.Send(s, m); err != nil {
+			fmt.Printf("Could not send email to %q: %v", e.To, err)
+		}
+		m.Reset()
+	}
 	return nil
 }
+func buildSubject(jobName string) string {
+	return "Invitation to Bid: " + jobName
+}
+
 func buildMessage(name, expiration, message, link string) string {
 	/*		if (($message == '') || (ctype_space($message))) {
 			$body = '<center>
