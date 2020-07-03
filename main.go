@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"encoding/base64"
 
 	"gopkg.in/gomail.v2"
 	"github.com/hashicorp/go-multierror"
@@ -14,7 +15,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
     "github.com/aws/aws-sdk-go/aws/session"
     "github.com/aws/aws-sdk-go/service/s3"
-    "github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/aws/aws-sdk-go/service/kms"
 )
 
 // struct containing data for all the emails being processed
@@ -29,6 +31,40 @@ type emailInfo struct {
 type recipientInfo struct {
 	To   string `json:"to"`
 	Link string `json:"link"`
+}
+var functionName string = os.Getenv("AWS_LAMBDA_FUNCTION_NAME")
+var decryptedServer string
+var decryptedPort string
+var decryptedEmail string
+var decryptedPassword string
+var decryptedError string
+
+func init() {
+	decryptedServer = decrypt(os.Getenv("PE_SERVER"))
+	decryptedPort = decrypt(os.Getenv("PE_PORT"))
+	decryptedEmail = decrypt(os.Getenv("PE_EMAIL"))
+	decryptedPassword= decrypt(os.Getenv("PE_PASSWORD"))
+	decryptedError = decrypt(os.Getenv("PE_ERROR"))
+}
+
+func decrypt(encrypted string) string {
+		kmsClient := kms.New(session.New())
+		decodedBytes, err := base64.StdEncoding.DecodeString(encrypted)
+		if err != nil {
+			panic(err)
+		}
+		input := &kms.DecryptInput{
+			CiphertextBlob: decodedBytes,
+			EncryptionContext: aws.StringMap(map[string]string{
+				"LambdaFunctionName": functionName,
+			}),
+		}
+		response, err := kmsClient.Decrypt(input)
+		if err != nil {
+			panic(err)
+		}
+		// Plaintext is a byte array, so convert to string
+		return string(response.Plaintext[:])
 }
 
 func main() {
@@ -103,14 +139,14 @@ func HandleRequest(s3Event events.S3Event) error {
 }
 
 func sendError(errorToSend error) {
-	server := os.Getenv("PE_SERVER")
-	port, err := strconv.Atoi(os.Getenv("PE_PORT"))
+	server := decryptedServer
+	port, err := strconv.Atoi(decryptedPort)
 	if err != nil {
 		fmt.Printf("Failed to send error notification %v",err)
 	}
-	email := os.Getenv("PE_EMAIL")
-	password := os.Getenv("PE_PASSWORD")
-	to := os.Getenv("PE_ERROR")
+	email := decryptedEmail
+	password := decryptedPassword
+	to := decryptedError
 
 	d := gomail.NewDialer(server, port, email, password)
 	s, err := d.Dial()
@@ -134,13 +170,13 @@ func sendError(errorToSend error) {
 }
 
 func sendMail(data *emailInfo) error {
-	server := os.Getenv("PE_SERVER")
-	port, err := strconv.Atoi(os.Getenv("PE_PORT"))
+	server := decryptedServer
+	port, err := strconv.Atoi(decryptedPort)
 	if err != nil {
 		return err
 	}
-	email := os.Getenv("PE_EMAIL")
-	password := os.Getenv("PE_PASSWORD")
+	email := decryptedEmail
+	password := decryptedPassword
 
 	d := gomail.NewDialer(server, port, email, password)
 	s, err := d.Dial()
