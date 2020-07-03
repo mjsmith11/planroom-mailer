@@ -92,7 +92,7 @@ func HandleRequest(s3Event events.S3Event) error {
 				Key:    aws.String(recordS3.Object.Key),
 			})
 		if err != nil {
-			fmt.Printf("Error downloading S3 Object %v", err)
+			fmt.Printf("Error downloading S3 Object %v\n", err)
 			allErrors = multierror.Append(allErrors,err)
 			sendError(err)
 			continue
@@ -103,7 +103,7 @@ func HandleRequest(s3Event events.S3Event) error {
 		//Get Object to a struct
 		var request *emailInfo
 		if request, err = unmarshalRequest(S3String); err != nil {
-			fmt.Printf("Error Unmarshalling request %v", err)
+			fmt.Printf("Error Unmarshalling request %v\n", err)
 			allErrors = multierror.Append(allErrors,err)
 			sendError(err)
 			continue
@@ -111,7 +111,7 @@ func HandleRequest(s3Event events.S3Event) error {
 
 		//Send the emails
 		if err = sendMail(request); err != nil {
-			fmt.Printf("Sending emails %v", err)
+			fmt.Printf("Sending emails %v\n", err)
 			allErrors = multierror.Append(allErrors,err)
 			sendError(err)
 			continue
@@ -123,7 +123,7 @@ func HandleRequest(s3Event events.S3Event) error {
 			svc := s3.New(sess)
 			_, err = svc.DeleteObject(&s3.DeleteObjectInput{Bucket: aws.String(recordS3.Bucket.Name), Key: aws.String(recordS3.Object.Key)})
 			if err != nil {
-				fmt.Printf("Error downloading S3 Object %v", err)
+				fmt.Printf("Error downloading S3 Object %v\n", err)
 				allErrors = multierror.Append(allErrors,err)
 				sendError(err)
 				continue
@@ -137,7 +137,7 @@ func sendError(errorToSend error) {
 	server := decryptedServer
 	port, err := strconv.Atoi(decryptedPort)
 	if err != nil {
-		fmt.Printf("Failed to send error notification %v",err)
+		fmt.Printf("Failed to send error notification %v\n",err)
 	}
 	email := decryptedEmail
 	password := decryptedPassword
@@ -146,7 +146,7 @@ func sendError(errorToSend error) {
 	d := gomail.NewDialer(server, port, email, password)
 	s, err := d.Dial()
 	if err != nil {
-		fmt.Printf("Failed to send error notification %v",err)
+		fmt.Printf("Failed to send error notification %v\n",err)
 	}
 	defer s.Close()
 	m := gomail.NewMessage()
@@ -158,7 +158,7 @@ func sendError(errorToSend error) {
 	m.AddAlternative("text/html", fmt.Sprintf("There was an error sending emails %v", errorToSend))
 
 	if err := gomail.Send(s, m); err != nil {
-		fmt.Printf("Failed to send error notification %v",err)
+		fmt.Printf("Failed to send error notification %v\n",err)
 	}
 	m.Reset()
 	
@@ -191,7 +191,7 @@ func sendMail(data *emailInfo) error {
 		if err := gomail.Send(s, m); err != nil {
 			messageErrors = multierror.Append(messageErrors, err)
 		} else {
-			fmt.Printf("%s email sent to %s",data.JobName,e.To)
+			fmt.Printf("%s email sent to %s\n",data.JobName,e.To)
 		}
 		m.Reset()
 	}
