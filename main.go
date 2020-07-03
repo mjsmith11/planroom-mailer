@@ -128,11 +128,13 @@ func HandleRequest(s3Event events.S3Event) error {
 				sendError(err)
 				continue
 			}
-
+			fmt.Print("Wating for object detetion")
 			err = svc.WaitUntilObjectNotExists(&s3.HeadObjectInput{
 				Bucket: aws.String(recordS3.Bucket.Name),
 				Key:    aws.String(recordS3.Object.Key),
 			})
+			fmt.Print("Object Deleted")
+
 		}
 	}
 	return allErrors
@@ -259,3 +261,5 @@ func unmarshalRequest(data string) (*emailInfo, error) {
 	}
 	return &req, nil
 }
+
+

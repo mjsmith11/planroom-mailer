@@ -22,3 +22,21 @@ This should be deployed as an AWS Lambda and triggered by adding an object to th
     ] 
 }
 ```
+
+## Deployment
+### KMS
+- Create a key to use for encrypting environment variables.
+### S3
+- This should be a bucket for use only with this lambda
+- Most options can be left off.  Public access isn't reccomended, and encryption can be turned on if desired.
+### Lambda
+- The runtime should be Go 1.x
+- It should use a role with the AWSBasicLambdaExecutionRole policy and policies allowing GetObject and DeleteObject in S3, and decrypting with the KMS key.
+- The S3 bucket should be configured as a trigger and does not need a prefix or suffix.
+- Setup required environment variables with KMS encryption.
+- 128 MB Memory
+- 60 second timeout
+- Handler - main
+- No X-Ray
+- No VPC
+- Defaults for concurency, asynchronous invocation, filesystems and database proxies
