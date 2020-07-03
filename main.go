@@ -128,13 +128,6 @@ func HandleRequest(s3Event events.S3Event) error {
 				sendError(err)
 				continue
 			}
-			fmt.Print("Wating for object detetion")
-			err = svc.WaitUntilObjectNotExists(&s3.HeadObjectInput{
-				Bucket: aws.String(recordS3.Bucket.Name),
-				Key:    aws.String(recordS3.Object.Key),
-			})
-			fmt.Print("Object Deleted")
-
 		}
 	}
 	return allErrors
@@ -197,6 +190,8 @@ func sendMail(data *emailInfo) error {
 
 		if err := gomail.Send(s, m); err != nil {
 			messageErrors = multierror.Append(messageErrors, err)
+		} else {
+			fmt.Printf("%s email sent to %s",data.JobName,e.To)
 		}
 		m.Reset()
 	}

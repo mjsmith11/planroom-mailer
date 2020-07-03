@@ -39,4 +39,5 @@ This should be deployed as an AWS Lambda and triggered by adding an object to th
 - Handler - main
 - No X-Ray
 - No VPC
-- Defaults for concurency, asynchronous invocation, filesystems and database proxies
+- Defaults for concurency, filesystems and database proxies
+- Turn off retries in asynchronous invokation
