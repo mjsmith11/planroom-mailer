@@ -4,3 +4,11 @@ go:
 script:
 - 'GOOS=linux go build main.go'
 - 'zip function.zip main'
+deploy:
+  provider: releases
+  api_key:
+    secure: eK0kZ9jrD+Z7/Ga9gjvVnGLjOWtPaK0E4CHOrEGvSDsMLjTul4KaoxinqVelVNkqetW4f1iqfFxhn48WLewUYe9D9VMrww23c26FgEcd6dcSeFqYg3zNiq3yncK/yxApEQDg1WAU/xxkB6u5K/uEA7cNMos+5utpXoH58N0Oea1V5z8vd5mMhWYXbgK+Fh5rD10e9po7V6/qTOHFZkkD4iP+HUws5zeBy/pwo4fykX5noXgtJHsv6qrEcq5OHSorNYuB1nMRKvbe2d1xKLc7HCT3GWUalBX7oIqOrPs56w3AzsrLqz1gZGcg6qH5O2JBk7FVN+IVVN+wAYxPSHQii7zNquYxvg14SQtVVpQidu9Jn8YKKzNINZc5zbKgUTo5nLBL3DdeD3IFqhzrEPn22B6FpF0a2JpqF1skIOwB9d0dPI45gSpDPKGcH4o2APVYZzW+K64ImF9q0ScypZKMHoxB49rN8Qw4NontDCCTN0h0HERscaYL59Y7tglB4/tH4Qe7u5Jk/Y7dkilCHlHSdZo0tToCzi0ryJxuVF1LIftIALLJ/QT2WP58zZOkOvPOSAAmQwh9zQAznMooDkMNBxuoz2TjLOj17gdr15lzXdj/SHweSicycSn430EZLuroq+7MCY26/3jJMi5Pqwi+ru6vFOaeLwfHmDTI/2AYx9Q=
+  file: function.zip
+  skip_cleanup: true
+  on:
+    tags: true
