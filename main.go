@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"gopkg.in/gomail.v2"
+	"github.com/hashicorp/go-multierror"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws"
@@ -35,7 +36,7 @@ func main() {
 }
 
 func HandleRequest(s3Event events.S3Event) error {
-
+	var allErrors error
 	for _, record := range s3Event.Records {
 		var err error
 		recordS3 := record.S3
@@ -55,7 +56,10 @@ func HandleRequest(s3Event events.S3Event) error {
 				Key:    aws.String(recordS3.Object.Key),
 			})
 		if err != nil {
-			return err
+			fmt.Printf("Error downloading S3 Object %v", err)
+			allErrors = multierror.Append(allErrors,err)
+			sendError(err)
+			continue
 		}
 
 		S3String := string(buf.Bytes())
@@ -63,15 +67,19 @@ func HandleRequest(s3Event events.S3Event) error {
 		//Get Object to a struct
 		var request *emailInfo
 		if request, err = unmarshalRequest(S3String); err != nil {
-			return err
+			fmt.Printf("Error Unmarshalling request %v", err)
+			allErrors = multierror.Append(allErrors,err)
+			sendError(err)
+			continue
 		}
 
 		//Send the emails
 		if err = sendMail(request); err != nil {
-			return err
+			fmt.Printf("Sending emails %v", err)
+			allErrors = multierror.Append(allErrors,err)
+			sendError(err)
+			continue
 		}
-
-		//Log errors and try to email someone on error. maybe use multiple error plugin thing
 
 		//Delete the object from S3
 		if err == nil {
@@ -79,7 +87,10 @@ func HandleRequest(s3Event events.S3Event) error {
 			svc := s3.New(sess)
 			_, err = svc.DeleteObject(&s3.DeleteObjectInput{Bucket: aws.String(recordS3.Bucket.Name), Key: aws.String(recordS3.Object.Key)})
 			if err != nil {
-				return err
+				fmt.Printf("Error downloading S3 Object %v", err)
+				allErrors = multierror.Append(allErrors,err)
+				sendError(err)
+				continue
 			}
 
 			err = svc.WaitUntilObjectNotExists(&s3.HeadObjectInput{
@@ -88,7 +99,38 @@ func HandleRequest(s3Event events.S3Event) error {
 			})
 		}
 	}
-	return nil
+	return allErrors
+}
+
+func sendError(errorToSend error) {
+	server := os.Getenv("PE_SERVER")
+	port, err := strconv.Atoi(os.Getenv("PE_PORT"))
+	if err != nil {
+		fmt.Printf("Failed to send error notification %v",err)
+	}
+	email := os.Getenv("PE_EMAIL")
+	password := os.Getenv("PE_PASSWORD")
+	to := os.Getenv("PE_ERROR")
+
+	d := gomail.NewDialer(server, port, email, password)
+	s, err := d.Dial()
+	if err != nil {
+		fmt.Printf("Failed to send error notification %v",err)
+	}
+	defer s.Close()
+	m := gomail.NewMessage()
+
+	m.SetAddressHeader("From", email, "Benchmark Planroom")
+	m.SetHeader("To", to)
+	m.SetHeader("Subject", "Planroom Email Error")
+	m.AddAlternative("text/plain", fmt.Sprintf("There was an error sending emails %v", errorToSend))
+	m.AddAlternative("text/html", fmt.Sprintf("There was an error sending emails %v", errorToSend))
+
+	if err := gomail.Send(s, m); err != nil {
+		fmt.Printf("Failed to send error notification %v",err)
+	}
+	m.Reset()
+	
 }
 
 func sendMail(data *emailInfo) error {
@@ -107,6 +149,7 @@ func sendMail(data *emailInfo) error {
 	}
 	defer s.Close()
 	m := gomail.NewMessage()
+	var messageErrors error
 	for _, e := range data.Recipients {
 		m.SetAddressHeader("From", email, "Benchmark Planroom")
 		m.SetHeader("To", e.To)
@@ -115,11 +158,11 @@ func sendMail(data *emailInfo) error {
 		m.AddAlternative("text/html", buildMessage(data.JobName, data.Expiration, data.Message, e.Link))
 
 		if err := gomail.Send(s, m); err != nil {
-			fmt.Printf("Could not send email to %q: %v", e.To, err)
+			messageErrors = multierror.Append(messageErrors, err)
 		}
 		m.Reset()
 	}
-	return nil
+	return messageErrors
 }
 func buildSubject(jobName string) string {
 	return "Invitation to Bid: " + jobName
