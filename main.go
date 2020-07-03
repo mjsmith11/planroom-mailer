@@ -74,6 +74,19 @@ func HandleRequest(s3Event events.S3Event) error {
 		//Log errors and try to email someone on error. maybe use multiple error plugin thing
 
 		//Delete the object from S3
+		if err == nil {
+			// if it's made it this far without erroring, it's safe to delete the S3 object
+			svc := s3.New(sess)
+			_, err = svc.DeleteObject(&s3.DeleteObjectInput{Bucket: aws.String(recordS3.Bucket.Name), Key: aws.String(recordS3.Object.Key)})
+			if err != nil {
+				return err
+			}
+
+			err = svc.WaitUntilObjectNotExists(&s3.HeadObjectInput{
+				Bucket: aws.String(recordS3.Bucket.Name),
+				Key:    aws.String(recordS3.Object.Key),
+			})
+		}
 	}
 	return nil
 }
