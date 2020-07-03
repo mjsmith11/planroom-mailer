@@ -11,5 +11,5 @@ deploy:
     secure: amVI5K3tBW5kZoQsQbEikGLbYD55V1RKu+YOw9GLN1tHqWzcKDc1cSNSyzgMB0adB/4vp9nrQoBIKefltlTbvbKNDw+vTAhpRRwhU5LbmJoq9/2IdufYdtjxpFKsD7mzVvqbZizxW8Xps3QbKbqHp1ohwv5LgHz2v3fwXe53Ug0ENdCNKAlWY2cd7GJMG42AW2+a+leRJrI24ryYY+2WMG1/ppy5w1QJBqkw4b6+/AciYcCrV3awI9lqe3UdULHYFOTU7hsI7O6m8jKf6Oy8gtUX5kNFxup8FXpUew8acTwhNn2SG2/M5e8AJJ6I98T48huJZY7opzEbsOCjJDs14Tc+WuOfnhk3lUKqSgRpgJWua3e/Zm2Dr3HKvPmfQoO3ZZJwafsINQVDBeqslrrbtMrB64tsQe67bHy3s/5Np4pnRiJ3Nv/ndol+rvyL5mUQwSGPp+rB7TNtyIKOvDA0y8edE3b8EPVtFnZclm3xKvVhzUYQcxobjTOeCf7N3Fl3J/RqR8IsumZmTnzO+ZEb3LT0MQqqY7UKmwkNZyKYOAIsjmoGrAUgkhy+wP/33FSq5W4CCPfuXGaUA855yWhDhLtsLjbnANR4tDtwW3/thksMbgjl0TW6PX2Mk+CndbesaBOejR589aVC9rxMjnBgEzFrqZxkP7su4/YSMRt9Q1M=
   file: function.zip
   on:
-    repo: mjsmith11/planroom-mailer
+    tag: true
   skip_cleanup: 'true'
