@@ -10,6 +10,10 @@ import (
 	"gopkg.in/gomail.v2"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go/aws"
+    "github.com/aws/aws-sdk-go/aws/session"
+    "github.com/aws/aws-sdk-go/service/s3"
+    "github.com/aws/aws-sdk-go/service/s3/s3manager"
 )
 
 // struct containing data for all the emails being processed
@@ -31,26 +35,46 @@ func main() {
 }
 
 func HandleRequest(s3Event events.S3Event) error {
-	var request *emailInfo
-	var err error
 
-	//Get Object from S3
-	S3String := "fake data"
+	for _, record := range s3Event.Records {
+		var err error
+		recordS3 := record.S3
 
-	//Get Object to a struct
-	if request, err = unmarshalRequest(S3String); err != nil {
-		return err
+		//Get Object from S3
+		sess, _ := session.NewSession(&aws.Config{
+			Region: aws.String(record.AWSRegion)},
+		)
+	
+		downloader := s3manager.NewDownloader(sess)
+		
+		buf := aws.NewWriteAtBuffer([]byte{})
+
+		_, err = downloader.Download(buf,
+			&s3.GetObjectInput{
+				Bucket: aws.String(recordS3.Bucket.Name),
+				Key:    aws.String(recordS3.Object.Key),
+			})
+		if err != nil {
+			return err
+		}
+
+		S3String := string(buf.Bytes())
+
+		//Get Object to a struct
+		var request *emailInfo
+		if request, err = unmarshalRequest(S3String); err != nil {
+			return err
+		}
+
+		//Send the emails
+		if err = sendMail(request); err != nil {
+			return err
+		}
+
+		//Log errors and try to email someone on error. maybe use multiple error plugin thing
+
+		//Delete the object from S3
 	}
-
-	//Send the emails
-	if err = sendMail(request); err != nil {
-		return err
-	}
-
-	//Log errors and try to email someone on error. maybe use multiple error plugin thing
-
-	//Delete the object from S3
-
 	return nil
 }
 
@@ -89,38 +113,38 @@ func buildSubject(jobName string) string {
 }
 
 func buildMessage(name, expiration, message, link string) string {
-	/*		if (($message == '') || (ctype_space($message))) {
-			$body = '<center>
-	<img src="https://benchmarkmechanical.com/Images/logo1.jpg" />
-	<br><br><br>
-	<div style="width:60%;border:1px solid lightgrey">
-		<h1>Invitation to Bid</h1>
-		<h2>' . $job['name'] . '</h2>
-		<a href="' . $link . '">Click Here</a> to access bidding documents and project details.<br>This link will expire ' . $expStr . '.
-		<br><br><br>
-		<span style="color:grey;font-size:10pt"><em>Please do not reply to this email. The mailbox is not monitored.</em></span>
-	</div>
-</center>';
-		} else {
-			$body = '<center>
-	<img src="https://benchmarkmechanical.com/Images/logo1.jpg" />
-	<br><br><br>
-	<div style="width:60%;border:1px solid lightgrey">
-		<h1>Invitation to Bid</h1>
-		<h2>' . $job['name'] . '</h2>
-		<div style="width:70%">'
-            . $message .
-        '</div>
-        <br>
-		<a href="' . $link . '">Click Here</a> to access bidding documents and project details.<br>This link will expire ' . $expStr . '.
-		<br><br><br>
-		<span style="color:grey;font-size:10pt"><em>Please do not reply to this email. The mailbox is not monitored.</em></span>
-	</div>
-</center>';
-		}
-		return $body;*/
-		return ""
+	var body string
+	if strings.TrimSpace(message) == "" {
+		body = "<center>"
+		body += "	<img src=\"https://benchmarkmechanical.com/Images/logo1.jpg\" />"
+		body += "	<br><br><br>"
+		body += "	<div style=\"width:60%;border:1px solid lightgrey\">"
+		body += "		<h1>Invitation to Bid</h1>"
+		body += fmt.Sprintf("		<h2>%s</h2>",name)
+		body += fmt.Sprintf("		<a href=\"%s\">Click Here</a> to access bidding documents and project details.<br>This link will expire %s.",link,expiration)
+		body += "		<br><br><br>"
+		body += "		<span style=\"color:grey;font-size:10pt\"><em>Please do not reply to this email. The mailbox is not monitored.</em></span>"
+		body += "	</div>"
+		body += "</center>"
+	} else {
+		body = "<center>"
+		body += "	<img src=\"https://benchmarkmechanical.com/Images/logo1.jpg\" />"
+		body += "	<br><br><br>"
+		body += "	<div style=\"width:60%;border:1px solid lightgrey\">"
+		body += "		<h1>Invitation to Bid</h1>"
+		body += fmt.Sprintf("		<h2>%s</h2>",name)
+		body += "		<div style=\"width:70%\">"
+		body += message
+		body += "		</div><br>"
+		body += fmt.Sprintf("		<a href=\"%s\">Click Here</a> to access bidding documents and project details.<br>This link will expire %s.",link,expiration)
+		body += "		<br><br><br>"
+		body += "		<span style=\"color:grey;font-size:10pt\"><em>Please do not reply to this email. The mailbox is not monitored.</em></span>"
+		body += "	</div>"
+		body += "</center>"
+	}
+	return body
 }
+
 func buildAltMessage(name, expiration, message, link string) string {
 	body := fmt.Sprintf("This is an invitation from Benchmark Mechanical to bid on the %s project. Bidding documents ", name)
 	body += fmt.Sprintf("and project details are available at the link below. The link will expire %s", expiration)
