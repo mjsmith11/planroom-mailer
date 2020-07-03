@@ -3,6 +3,7 @@ go:
 - '1.14'
 script:
 - 'GOOS=linux go build main.go'
+before_deploy:
 - 'zip function.zip main'
 deploy:
   provider: releases
